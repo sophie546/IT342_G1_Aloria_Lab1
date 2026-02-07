@@ -1,0 +1,246 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+const Login = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showRegister, setShowRegister] = useState(false);
+  const navigate = useNavigate();
+
+  // Container - Full Screen
+  const containerStyle = {
+    width: '100vw',
+    height: '100vh',
+    display: 'flex',
+    overflow: 'hidden',
+    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif"
+  };
+
+  // Left Panel - Welcome
+  const leftPanelStyle = {
+    flex: 1,
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: 'white',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '40px',
+    textAlign: 'center'
+  };
+
+  // Right Panel - Form
+  const rightPanelStyle = {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '40px',
+    backgroundColor: '#fff'
+  };
+
+  // Form container
+  const formContainerStyle = {
+    width: '100%',
+    maxWidth: '400px'
+  };
+
+  // Input styles
+  const inputStyle = {
+    width: '100%',
+    padding: '16px',
+    marginBottom: '20px',
+    border: '1px solid #ddd',
+    borderRadius: '8px',
+    fontSize: '16px',
+    boxSizing: 'border-box'
+  };
+
+  // Button styles
+  const buttonStyle = {
+    width: '100%',
+    padding: '16px',
+    backgroundColor: '#667eea',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    marginTop: '10px'
+  };
+
+  // Link styles
+  const linkStyle = {
+    color: '#667eea',
+    fontWeight: '600',
+    cursor: 'pointer',
+    textDecoration: 'none'
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Mock login
+    localStorage.setItem('user', JSON.stringify({ 
+      email, 
+      name: 'John Doe' 
+    }));
+    navigate('/profile');
+  };
+
+  return (
+    <div style={containerStyle}>
+      {/* Left Panel - Welcome */}
+      <div style={leftPanelStyle}>
+        <div style={{ maxWidth: '500px' }}>
+          <h1 style={{ 
+            fontSize: '3rem', 
+            marginBottom: '20px',
+            fontWeight: '700'
+          }}>
+            Welcome Back
+          </h1>
+          
+          <p style={{ 
+            fontSize: '1.2rem', 
+            marginBottom: '40px',
+            opacity: '0.9',
+            lineHeight: '1.6'
+          }}>
+            Welcome to our platform! We're excited to have you back. 
+            Sign in to access your account and continue your journey with us.
+          </p>
+          
+          <div style={{ 
+            background: 'rgba(255, 255, 255, 0.1)',
+            padding: '30px',
+            borderRadius: '15px',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            marginBottom: '40px'
+          }}>
+            <div style={{ 
+              fontSize: '2.5rem',
+              marginBottom: '15px'
+            }}>
+              🔐
+            </div>
+            <h3 style={{ marginBottom: '10px' }}>Secure & Reliable</h3>
+            <p style={{ opacity: '0.8', fontSize: '0.9rem' }}>
+              Your data is protected with enterprise-grade security
+            </p>
+          </div>
+          
+          <p style={{ marginBottom: '20px', opacity: '0.8' }}>
+            Don't have an account?
+          </p>
+          
+          <button
+            onClick={() => navigate('/register')}
+            style={{
+              padding: '15px 40px',
+              backgroundColor: 'transparent',
+              color: 'white',
+              border: '2px solid white',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '600',
+              cursor: 'pointer'
+            }}
+          >
+            Sign Up
+          </button>
+        </div>
+      </div>
+
+      {/* Right Panel - Login Form */}
+      <div style={rightPanelStyle}>
+        <div style={formContainerStyle}>
+          <h2 style={{ 
+            fontSize: '2.5rem', 
+            marginBottom: '10px',
+            color: '#333',
+            fontWeight: '700'
+          }}>
+            Sign In
+          </h2>
+          
+          <p style={{ 
+            color: '#666', 
+            marginBottom: '40px',
+            fontSize: '1.1rem'
+          }}>
+            Sign in to your account
+          </p>
+          
+          <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+            <div style={{ marginBottom: '25px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '600',
+                color: '#333'
+              }}>
+                Email
+              </label>
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                style={inputStyle}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '25px' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '8px',
+                fontWeight: '600',
+                color: '#333'
+              }}>
+                Password
+              </label>
+              <input
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={inputStyle}
+              />
+            </div>
+            
+            <button 
+              type="submit" 
+              style={buttonStyle}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#5a67d8'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#667eea'}
+            >
+              Sign In
+            </button>
+          </form>
+          
+          <p style={{ 
+            marginTop: '30px', 
+            color: '#666',
+            fontSize: '1rem',
+            textAlign: 'center'
+          }}>
+            Don't have an account?{' '}
+            <span 
+              onClick={() => navigate('/register')} 
+              style={linkStyle}
+            >
+              Sign up
+            </span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Login;
