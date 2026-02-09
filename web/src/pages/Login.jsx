@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Mail, Lock } from 'lucide-react';
+import { User, Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -7,6 +7,103 @@ const Login = () => {
   const [name, setName] = useState('');
   const [showRegister, setShowRegister] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [nameError, setNameError] = useState('');
+
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePassword = (password) => {
+    return password.length >= 8 && /\d/.test(password);
+  };
+
+  const validateName = (name) => {
+    // Only allows letters, spaces, and common name characters like apostrophes and hyphens
+    const nameRegex = /^[A-Za-z\s.'-]+$/;
+    
+    // Check if it matches the allowed characters
+    if (!nameRegex.test(name)) {
+      return false;
+    }
+    
+    // Remove spaces to check actual character count
+    const trimmedName = name.trim();
+    
+    // Must have at least 4 characters (after trimming spaces)
+    if (trimmedName.length < 4) {
+      return false;
+    }
+    
+    // Must contain at least one letter (not just spaces/special chars)
+    const hasLetters = /[A-Za-z]/.test(trimmedName);
+    if (!hasLetters) {
+      return false;
+    }
+    
+    return true;
+  };
+
+  const handleEmailChange = (e) => {
+    const value = e.target.value;
+    setEmail(value);
+    if (value && !validateEmail(value)) {
+      setEmailError('Please enter a valid email address');
+    } else {
+      setEmailError('');
+    }
+  };
+
+  const handlePasswordChange = (e) => {
+    const value = e.target.value;
+    setPassword(value);
+    if (value && !validatePassword(value)) {
+      setPasswordError('Password must be at least 8 characters and include numbers');
+    } else {
+      setPasswordError('');
+    }
+  };
+
+  const handleNameChange = (e) => {
+    const value = e.target.value;
+    setName(value);
+    
+    if (!value) {
+      setNameError('');
+      return;
+    }
+    
+    // Check allowed characters first
+    const nameRegex = /^[A-Za-z\s.'-]+$/;
+    if (!nameRegex.test(value)) {
+      setNameError('Name should only contain letters, spaces, and common name characters');
+      return;
+    }
+    
+    const trimmedName = value.trim();
+    
+    // Check minimum length
+    if (trimmedName.length < 4) {
+      setNameError('Name must be at least 4 characters long');
+      return;
+    }
+    
+    // Check if contains at least one letter
+    const hasLetters = /[A-Za-z]/.test(trimmedName);
+    if (!hasLetters) {
+      setNameError('Name must contain at least one letter');
+      return;
+    }
+    
+    setNameError('');
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
   const styles = {
     container: {
@@ -245,7 +342,7 @@ const Login = () => {
     
     input: {
       width: '100%',
-      padding: '14px 14px 14px 45px',
+      padding: '14px 50px 14px 45px',
       border: 'none',
       backgroundColor: '#f5f5f5',
       borderRadius: '8px',
@@ -263,6 +360,23 @@ const Login = () => {
       transform: 'translateY(-50%)',
       color: '#999',
       transition: 'color 0.3s ease',
+      zIndex: 2,
+    },
+
+    passwordToggle: {
+      position: 'absolute',
+      right: '16px',
+      top: '50%',
+      transform: 'translateY(-50%)',
+      color: '#999',
+      cursor: 'pointer',
+      zIndex: 2,
+      background: 'none',
+      border: 'none',
+      padding: '0',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     
     submitBtn: {
@@ -280,6 +394,8 @@ const Login = () => {
       transition: 'all 0.3s ease',
       letterSpacing: '1px',
       display: 'block',
+      opacity: (nameError || emailError || passwordError) ? 0.6 : 1,
+      cursor: (nameError || emailError || passwordError) ? 'not-allowed' : 'pointer',
     },
     
     toggleText: {
@@ -303,18 +419,104 @@ const Login = () => {
       cursor: 'pointer',
       display: 'inline-block',
     },
+
+    errorMessage: {
+      fontSize: '0.8rem',
+      color: '#f87171',
+      marginTop: '6px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      animation: 'fadeIn 0.3s ease',
+    },
+
+    passwordRequirements: {
+      fontSize: '0.8rem',
+      color: '#666',
+      marginTop: '6px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+    },
+
+    nameRequirements: {
+      fontSize: '0.8rem',
+      color: '#666',
+      marginTop: '6px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+    },
+
+    validCheck: {
+      color: '#4db8a5',
+      fontSize: '14px',
+    },
+
+    nameHint: {
+      fontSize: '0.75rem',
+      color: '#888',
+      marginTop: '4px',
+      fontStyle: 'italic',
+    },
+
+    '@keyframes fadeIn': {
+      from: { opacity: 0, transform: 'translateY(-5px)' },
+      to: { opacity: 1, transform: 'translateY(0)' },
+    },
   };
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
-    if (email && password) {
+    
+    // Validate email and password
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = validatePassword(password);
+    
+    if (!isEmailValid) {
+      setEmailError('Please enter a valid email address');
+    }
+    
+    if (!isPasswordValid) {
+      setPasswordError('Password must be at least 8 characters and include numbers');
+    }
+    
+    if (isEmailValid && isPasswordValid && email && password) {
       alert('Login successful!');
     }
   };
 
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
-    if (name && email && password) {
+    
+    // Validate name, email and password
+    const isNameValid = validateName(name);
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = validatePassword(password);
+    
+    if (!isNameValid) {
+      const trimmedName = name.trim();
+      
+      if (!/^[A-Za-z\s.'-]+$/.test(name)) {
+        setNameError('Name should only contain letters, spaces, and common name characters');
+      } else if (trimmedName.length < 4) {
+        setNameError('Name must be at least 4 characters long');
+      } else if (!/[A-Za-z]/.test(trimmedName)) {
+        setNameError('Name must contain at least one letter');
+      } else {
+        setNameError('Please enter a valid name');
+      }
+    }
+    
+    if (!isEmailValid) {
+      setEmailError('Please enter a valid email address');
+    }
+    
+    if (!isPasswordValid) {
+      setPasswordError('Password must be at least 8 characters and include numbers');
+    }
+    
+    if (isNameValid && isEmailValid && isPasswordValid && name && email && password) {
       alert('Registration successful!');
     }
   };
@@ -325,15 +527,23 @@ const Login = () => {
     setIsAnimating(true);
     setShowRegister(!showRegister);
     
+    // Reset errors when switching forms
+    setEmailError('');
+    setPasswordError('');
+    setNameError('');
+    setShowPassword(false);
+    
     setTimeout(() => {
       setIsAnimating(false);
     }, 700);
   };
 
   const handleBtnHover = (e) => {
-    e.target.style.backgroundColor = '#3ba795';
-    e.target.style.transform = 'translateY(-2px)';
-    e.target.style.boxShadow = '0 8px 20px rgba(77, 184, 165, 0.3)';
+    if (!nameError && !emailError && !passwordError) {
+      e.target.style.backgroundColor = '#3ba795';
+      e.target.style.transform = 'translateY(-2px)';
+      e.target.style.boxShadow = '0 8px 20px rgba(77, 184, 165, 0.3)';
+    }
   };
 
   const handleBtnLeave = (e) => {
@@ -360,6 +570,14 @@ const Login = () => {
   const handleInputBlur = (e) => {
     e.target.style.backgroundColor = '#f5f5f5';
     e.target.style.boxShadow = 'none';
+  };
+
+  const handlePasswordToggleHover = (e) => {
+    e.target.style.color = '#4db8a5';
+  };
+
+  const handlePasswordToggleLeave = (e) => {
+    e.target.style.color = '#999';
   };
 
   return (
@@ -410,14 +628,35 @@ const Login = () => {
                     <input
                       type="text"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={handleNameChange}
                       required
                       style={styles.input}
-                      placeholder="Name"
+                      placeholder="Name (minimum 4 letters)"
                       onFocus={handleInputFocus}
                       onBlur={handleInputBlur}
                     />
                   </div>
+                  {nameError ? (
+                    <div style={styles.errorMessage}>
+                      <AlertCircle size={14} />
+                      {nameError}
+                    </div>
+                  ) : name ? (
+                    validateName(name) ? (
+                      <div style={styles.nameRequirements}>
+                        <CheckCircle size={14} style={styles.validCheck} />
+                        Name is valid
+                      </div>
+                    ) : (
+                      <div style={styles.nameRequirements}>
+                        Name must be at least 4 letters long
+                      </div>
+                    )
+                  ) : (
+                    <div style={styles.nameHint}>
+                      Minimum 4 letters, no numbers or special characters
+                    </div>
+                  )}
                 </div>
                 
                 <div style={styles.formGroup}>
@@ -426,7 +665,7 @@ const Login = () => {
                     <input
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={handleEmailChange}
                       required
                       style={styles.input}
                       placeholder="Email"
@@ -434,22 +673,54 @@ const Login = () => {
                       onBlur={handleInputBlur}
                     />
                   </div>
+                  {emailError && (
+                    <div style={styles.errorMessage}>
+                      <AlertCircle size={14} />
+                      {emailError}
+                    </div>
+                  )}
                 </div>
                 
                 <div style={styles.formGroup}>
                   <div style={styles.inputWrapper}>
                     <Lock size={18} style={styles.inputIcon} />
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={handlePasswordChange}
                       required
                       style={styles.input}
                       placeholder="Password"
                       onFocus={handleInputFocus}
                       onBlur={handleInputBlur}
                     />
+                    <button 
+                      type="button"
+                      style={styles.passwordToggle}
+                      onClick={togglePasswordVisibility}
+                      onMouseEnter={handlePasswordToggleHover}
+                      onMouseLeave={handlePasswordToggleLeave}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
+                  {passwordError ? (
+                    <div style={styles.errorMessage}>
+                      <AlertCircle size={14} />
+                      {passwordError}
+                    </div>
+                  ) : password ? (
+                    validatePassword(password) ? (
+                      <div style={styles.passwordRequirements}>
+                        <CheckCircle size={14} style={styles.validCheck} />
+                        Password is valid
+                      </div>
+                    ) : (
+                      <div style={styles.passwordRequirements}>
+                        Password must be at least 8 characters and include numbers
+                      </div>
+                    )
+                  ) : null}
                 </div>
                 
                 <button 
@@ -457,6 +728,7 @@ const Login = () => {
                   style={styles.submitBtn}
                   onMouseEnter={handleBtnHover}
                   onMouseLeave={handleBtnLeave}
+                  disabled={nameError || emailError || passwordError}
                 >
                   SIGN UP
                 </button>
@@ -478,7 +750,7 @@ const Login = () => {
                     <input
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={handleEmailChange}
                       required
                       style={styles.input}
                       placeholder="Email"
@@ -486,22 +758,43 @@ const Login = () => {
                       onBlur={handleInputBlur}
                     />
                   </div>
+                  {emailError && (
+                    <div style={styles.errorMessage}>
+                      <AlertCircle size={14} />
+                      {emailError}
+                    </div>
+                  )}
                 </div>
                 
                 <div style={styles.formGroup}>
                   <div style={styles.inputWrapper}>
                     <Lock size={18} style={styles.inputIcon} />
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={handlePasswordChange}
                       required
                       style={styles.input}
                       placeholder="Password"
                       onFocus={handleInputFocus}
                       onBlur={handleInputBlur}
                     />
+                    <button 
+                      type="button"
+                      style={styles.passwordToggle}
+                      onClick={togglePasswordVisibility}
+                      onMouseEnter={handlePasswordToggleHover}
+                      onMouseLeave={handlePasswordToggleLeave}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
+                  {passwordError && (
+                    <div style={styles.errorMessage}>
+                      <AlertCircle size={14} />
+                      {passwordError}
+                    </div>
+                  )}
                 </div>
 
                 <div style={styles.toggleText}>
@@ -522,6 +815,7 @@ const Login = () => {
                   style={styles.submitBtn}
                   onMouseEnter={handleBtnHover}
                   onMouseLeave={handleBtnLeave}
+                  disabled={emailError || passwordError}
                 >
                   SIGN IN
                 </button>

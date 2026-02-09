@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Mail, Lock } from "lucide-react";
+import { User, Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -9,19 +9,119 @@ const Register = () => {
   const [lastName, setLastName] = useState('');
   const [showRegister, setShowRegister] = useState(true);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [firstNameError, setFirstNameError] = useState('');
+  const [lastNameError, setLastNameError] = useState('');
 
   const navigate = useNavigate();
 
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePassword = (password) => {
+    return password.length >= 8 && /\d/.test(password);
+  };
+
+  const validateName = (name) => {
+    // Only allows letters, spaces, and common name characters like apostrophes and hyphens
+    const nameRegex = /^[A-Za-z\s.'-]+$/;
+    return nameRegex.test(name);
+  };
+
+  const handleEmailChange = (e) => {
+    const value = e.target.value;
+    setEmail(value);
+    if (value && !validateEmail(value)) {
+      setEmailError('Please enter a valid email address');
+    } else {
+      setEmailError('');
+    }
+  };
+
+  const handlePasswordChange = (e) => {
+    const value = e.target.value;
+    setPassword(value);
+    if (value && !validatePassword(value)) {
+      setPasswordError('Password must be at least 8 characters and include numbers');
+    } else {
+      setPasswordError('');
+    }
+  };
+
+  const handleFirstNameChange = (e) => {
+    const value = e.target.value;
+    setFirstName(value);
+    if (value && !validateName(value)) {
+      setFirstNameError('Name should only contain letters, spaces, and common name characters');
+    } else {
+      setFirstNameError('');
+    }
+  };
+
+  const handleLastNameChange = (e) => {
+    const value = e.target.value;
+    setLastName(value);
+    if (value && !validateName(value)) {
+      setLastNameError('Name should only contain letters, spaces, and common name characters');
+    } else {
+      setLastNameError('');
+    }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   const handleRegisterSubmit = (e) => {
     e.preventDefault();
-    if (firstName && lastName && email && password) {
+    
+    // Validate all fields
+    const isFirstNameValid = !firstName || validateName(firstName);
+    const isLastNameValid = !lastName || validateName(lastName);
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = validatePassword(password);
+    
+    if (!isFirstNameValid) {
+      setFirstNameError('Name should only contain letters, spaces, and common name characters');
+    }
+    
+    if (!isLastNameValid) {
+      setLastNameError('Name should only contain letters, spaces, and common name characters');
+    }
+    
+    if (!isEmailValid) {
+      setEmailError('Please enter a valid email address');
+    }
+    
+    if (!isPasswordValid) {
+      setPasswordError('Password must be at least 8 characters and include numbers');
+    }
+    
+    if (isFirstNameValid && isLastNameValid && isEmailValid && isPasswordValid && firstName && lastName && email && password) {
       navigate("/dashboard");
     }
   };
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
-    if (email && password) {
+    
+    // Validate email and password
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = validatePassword(password);
+    
+    if (!isEmailValid) {
+      setEmailError('Please enter a valid email address');
+    }
+    
+    if (!isPasswordValid) {
+      setPasswordError('Password must be at least 8 characters and include numbers');
+    }
+    
+    if (isEmailValid && isPasswordValid && email && password) {
       alert("Login processed here");
     }
   };
@@ -31,6 +131,13 @@ const Register = () => {
     
     setIsAnimating(true);
     setShowRegister(!showRegister);
+    
+    // Reset errors when switching forms
+    setEmailError('');
+    setPasswordError('');
+    setFirstNameError('');
+    setLastNameError('');
+    setShowPassword(false);
     
     setTimeout(() => {
       setIsAnimating(false);
@@ -274,7 +381,7 @@ const Register = () => {
     
     input: {
       width: "100%",
-      padding: "14px 14px 14px 45px",
+      padding: "14px 50px 14px 45px",
       border: "none",
       backgroundColor: "#f5f5f5",
       borderRadius: "8px",
@@ -292,6 +399,23 @@ const Register = () => {
       transform: "translateY(-50%)",
       color: "#999",
       transition: "color 0.3s ease",
+      zIndex: 2,
+    },
+
+    passwordToggle: {
+      position: "absolute",
+      right: "16px",
+      top: "50%",
+      transform: "translateY(-50%)",
+      color: "#999",
+      cursor: "pointer",
+      zIndex: 2,
+      background: "none",
+      border: "none",
+      padding: "0",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
     },
     
     submitBtn: {
@@ -309,6 +433,8 @@ const Register = () => {
       transition: "all 0.3s ease",
       letterSpacing: "1px",
       display: "block",
+      opacity: (firstNameError || lastNameError || emailError || passwordError) ? 0.6 : 1,
+      cursor: (firstNameError || lastNameError || emailError || passwordError) ? 'not-allowed' : 'pointer',
     },
     
     toggleText: {
@@ -332,12 +458,52 @@ const Register = () => {
       cursor: "pointer",
       display: "inline-block",
     },
+
+    errorMessage: {
+      fontSize: "0.8rem",
+      color: "#f87171",
+      marginTop: "6px",
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+      animation: "fadeIn 0.3s ease",
+    },
+
+    passwordRequirements: {
+      fontSize: "0.8rem",
+      color: "#666",
+      marginTop: "6px",
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+    },
+
+    validCheck: {
+      color: "#4db8a5",
+      fontSize: "14px",
+    },
+
+    nameRequirements: {
+      fontSize: "0.8rem",
+      color: "#666",
+      marginTop: "6px",
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+    },
+
+    '@keyframes fadeIn': {
+      from: { opacity: 0, transform: 'translateY(-5px)' },
+      to: { opacity: 1, transform: 'translateY(0)' },
+    },
   };
 
   const handleBtnHover = (e) => {
-    e.target.style.backgroundColor = "#3ba795";
-    e.target.style.transform = "translateY(-2px)";
-    e.target.style.boxShadow = "0 8px 20px rgba(77, 184, 165, 0.3)";
+    if (!firstNameError && !lastNameError && !emailError && !passwordError) {
+      e.target.style.backgroundColor = "#3ba795";
+      e.target.style.transform = "translateY(-2px)";
+      e.target.style.boxShadow = "0 8px 20px rgba(77, 184, 165, 0.3)";
+    }
   };
 
   const handleBtnLeave = (e) => {
@@ -354,6 +520,14 @@ const Register = () => {
   const handleSignInBtnLeave = (e) => {
     e.target.style.backgroundColor = "transparent";
     e.target.style.transform = "translateY(0)";
+  };
+
+  const handlePasswordToggleHover = (e) => {
+    e.target.style.color = "#4db8a5";
+  };
+
+  const handlePasswordToggleLeave = (e) => {
+    e.target.style.color = "#999";
   };
 
   const handleInputFocus = (e) => {
@@ -418,7 +592,7 @@ const Register = () => {
                     <input
                       type="text"
                       value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
+                      onChange={handleFirstNameChange}
                       required
                       style={styles.input}
                       placeholder="First Name"
@@ -426,6 +600,23 @@ const Register = () => {
                       onBlur={handleInputBlur}
                     />
                   </div>
+                  {firstNameError ? (
+                    <div style={styles.errorMessage}>
+                      <AlertCircle size={14} />
+                      {firstNameError}
+                    </div>
+                  ) : firstName ? (
+                    validateName(firstName) ? (
+                      <div style={styles.nameRequirements}>
+                        <CheckCircle size={14} style={styles.validCheck} />
+                        Name is valid
+                      </div>
+                    ) : (
+                      <div style={styles.nameRequirements}>
+                        Name should only contain letters, spaces, and common name characters
+                      </div>
+                    )
+                  ) : null}
                 </div>
                 
                 <div style={styles.formGroup}>
@@ -434,7 +625,7 @@ const Register = () => {
                     <input
                       type="text"
                       value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
+                      onChange={handleLastNameChange}
                       required
                       style={styles.input}
                       placeholder="Last Name"
@@ -442,6 +633,23 @@ const Register = () => {
                       onBlur={handleInputBlur}
                     />
                   </div>
+                  {lastNameError ? (
+                    <div style={styles.errorMessage}>
+                      <AlertCircle size={14} />
+                      {lastNameError}
+                    </div>
+                  ) : lastName ? (
+                    validateName(lastName) ? (
+                      <div style={styles.nameRequirements}>
+                        <CheckCircle size={14} style={styles.validCheck} />
+                        Name is valid
+                      </div>
+                    ) : (
+                      <div style={styles.nameRequirements}>
+                        Name should only contain letters, spaces, and common name characters
+                      </div>
+                    )
+                  ) : null}
                 </div>
                 
                 <div style={styles.formGroup}>
@@ -450,7 +658,7 @@ const Register = () => {
                     <input
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={handleEmailChange}
                       required
                       style={styles.input}
                       placeholder="Email"
@@ -458,22 +666,54 @@ const Register = () => {
                       onBlur={handleInputBlur}
                     />
                   </div>
+                  {emailError && (
+                    <div style={styles.errorMessage}>
+                      <AlertCircle size={14} />
+                      {emailError}
+                    </div>
+                  )}
                 </div>
                 
                 <div style={styles.formGroup}>
                   <div style={styles.inputWrapper}>
                     <Lock size={18} style={styles.inputIcon} />
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={handlePasswordChange}
                       required
                       style={styles.input}
                       placeholder="Password"
                       onFocus={handleInputFocus}
                       onBlur={handleInputBlur}
                     />
+                    <button 
+                      type="button"
+                      style={styles.passwordToggle}
+                      onClick={togglePasswordVisibility}
+                      onMouseEnter={handlePasswordToggleHover}
+                      onMouseLeave={handlePasswordToggleLeave}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
+                  {passwordError ? (
+                    <div style={styles.errorMessage}>
+                      <AlertCircle size={14} />
+                      {passwordError}
+                    </div>
+                  ) : password ? (
+                    validatePassword(password) ? (
+                      <div style={styles.passwordRequirements}>
+                        <CheckCircle size={14} style={styles.validCheck} />
+                        Password is valid
+                      </div>
+                    ) : (
+                      <div style={styles.passwordRequirements}>
+                        Password must be at least 8 characters and include numbers
+                      </div>
+                    )
+                  ) : null}
                 </div>
                 
                 <button 
@@ -481,6 +721,7 @@ const Register = () => {
                   style={styles.submitBtn}
                   onMouseEnter={handleBtnHover}
                   onMouseLeave={handleBtnLeave}
+                  disabled={firstNameError || lastNameError || emailError || passwordError}
                 >
                   SIGN UP
                 </button>
@@ -512,7 +753,7 @@ const Register = () => {
                     <input
                       type="email"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={handleEmailChange}
                       required
                       style={styles.input}
                       placeholder="Email"
@@ -520,22 +761,43 @@ const Register = () => {
                       onBlur={handleInputBlur}
                     />
                   </div>
+                  {emailError && (
+                    <div style={styles.errorMessage}>
+                      <AlertCircle size={14} />
+                      {emailError}
+                    </div>
+                  )}
                 </div>
                 
                 <div style={styles.formGroup}>
                   <div style={styles.inputWrapper}>
                     <Lock size={18} style={styles.inputIcon} />
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={handlePasswordChange}
                       required
                       style={styles.input}
                       placeholder="Password"
                       onFocus={handleInputFocus}
                       onBlur={handleInputBlur}
                     />
+                    <button 
+                      type="button"
+                      style={styles.passwordToggle}
+                      onClick={togglePasswordVisibility}
+                      onMouseEnter={handlePasswordToggleHover}
+                      onMouseLeave={handlePasswordToggleLeave}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
+                  {passwordError && (
+                    <div style={styles.errorMessage}>
+                      <AlertCircle size={14} />
+                      {passwordError}
+                    </div>
+                  )}
                 </div>
 
                 <div style={styles.toggleText}>
@@ -556,6 +818,7 @@ const Register = () => {
                   style={styles.submitBtn}
                   onMouseEnter={handleBtnHover}
                   onMouseLeave={handleBtnLeave}
+                  disabled={emailError || passwordError}
                 >
                   SIGN IN
                 </button>
