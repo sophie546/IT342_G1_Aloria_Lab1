@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { User, Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
+import api from '../services/api';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -14,6 +15,8 @@ const Register = () => {
   const [passwordError, setPasswordError] = useState('');
   const [firstNameError, setFirstNameError] = useState('');
   const [lastNameError, setLastNameError] = useState('');
+  const [apiError, setApiError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -27,7 +30,6 @@ const Register = () => {
   };
 
   const validateName = (name) => {
-    // Only allows letters, spaces, and common name characters like apostrophes and hyphens
     const nameRegex = /^[A-Za-z\s.'-]+$/;
     return nameRegex.test(name);
   };
@@ -35,6 +37,7 @@ const Register = () => {
   const handleEmailChange = (e) => {
     const value = e.target.value;
     setEmail(value);
+    setApiError('');
     if (value && !validateEmail(value)) {
       setEmailError('Please enter a valid email address');
     } else {
@@ -45,6 +48,7 @@ const Register = () => {
   const handlePasswordChange = (e) => {
     const value = e.target.value;
     setPassword(value);
+    setApiError('');
     if (value && !validatePassword(value)) {
       setPasswordError('Password must be at least 8 characters and include numbers');
     } else {
@@ -55,6 +59,7 @@ const Register = () => {
   const handleFirstNameChange = (e) => {
     const value = e.target.value;
     setFirstName(value);
+    setApiError('');
     if (value && !validateName(value)) {
       setFirstNameError('Name should only contain letters, spaces, and common name characters');
     } else {
@@ -65,6 +70,7 @@ const Register = () => {
   const handleLastNameChange = (e) => {
     const value = e.target.value;
     setLastName(value);
+    setApiError('');
     if (value && !validateName(value)) {
       setLastNameError('Name should only contain letters, spaces, and common name characters');
     } else {
@@ -76,12 +82,12 @@ const Register = () => {
     setShowPassword(!showPassword);
   };
 
-  const handleRegisterSubmit = (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     
     // Validate all fields
-    const isFirstNameValid = !firstName || validateName(firstName);
-    const isLastNameValid = !lastName || validateName(lastName);
+    const isFirstNameValid = validateName(firstName);
+    const isLastNameValid = validateName(lastName);
     const isEmailValid = validateEmail(email);
     const isPasswordValid = validatePassword(password);
     
@@ -101,15 +107,47 @@ const Register = () => {
       setPasswordError('Password must be at least 8 characters and include numbers');
     }
     
-    if (isFirstNameValid && isLastNameValid && isEmailValid && isPasswordValid && firstName && lastName && email && password) {
-      navigate("/dashboard");
+    if (isFirstNameValid && isLastNameValid && isEmailValid && isPasswordValid) {
+      setIsLoading(true);
+      setApiError('');
+      
+      try {
+        console.log('Sending registration request...');
+        const response = await api.post('/auth/register', {
+          firstname: firstName,
+          lastname: lastName,
+          email: email,
+          password: password
+        });
+        
+        console.log('Registration successful:', response.data);
+        
+        // Store token and user data
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify({
+          userId: response.data.userId,
+          firstname: response.data.firstname,
+          lastname: response.data.lastname,
+          email: response.data.email
+        }));
+        
+        // Show success message
+        alert('Registration successful! Redirecting to profile...');
+        
+        // Redirect to profile
+        navigate("/profile");
+      } catch (error) {
+        console.error('Registration error:', error);
+        setApiError(error.response?.data || 'Registration failed. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate email and password
     const isEmailValid = validateEmail(email);
     const isPasswordValid = validatePassword(password);
     
@@ -122,7 +160,38 @@ const Register = () => {
     }
     
     if (isEmailValid && isPasswordValid && email && password) {
-      alert("Login processed here");
+      setIsLoading(true);
+      setApiError('');
+      
+      try {
+        console.log('Sending login request...');
+        const response = await api.post('/auth/login', {
+          identifier: email,
+          password: password
+        });
+        
+        console.log('Login successful:', response.data);
+        
+        // Store token and user data
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify({
+          userId: response.data.userId,
+          firstname: response.data.firstname,
+          lastname: response.data.lastname,
+          email: response.data.email
+        }));
+        
+        // Show success message
+        alert('Login successful! Redirecting to profile...');
+        
+        // Redirect to profile
+        navigate("/profile");
+      } catch (error) {
+        console.error('Login error:', error);
+        setApiError(error.response?.data || 'Login failed. Please check your credentials.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -137,6 +206,7 @@ const Register = () => {
     setPasswordError('');
     setFirstNameError('');
     setLastNameError('');
+    setApiError('');
     setShowPassword(false);
     
     setTimeout(() => {
@@ -158,7 +228,6 @@ const Register = () => {
       overflow: "hidden",
       boxSizing: "border-box",
     },
-
     decorativeCircle1: {
       position: "absolute",
       width: "300px",
@@ -170,7 +239,6 @@ const Register = () => {
       opacity: "0.8",
       zIndex: 0,
     },
-
     decorativeCircle2: {
       position: "absolute",
       width: "200px",
@@ -182,7 +250,6 @@ const Register = () => {
       opacity: "0.7",
       zIndex: 0,
     },
-    
     card: {
       width: "100%",
       maxWidth: "900px",
@@ -195,8 +262,6 @@ const Register = () => {
       display: "flex",
       zIndex: 1,
     },
-    
-    // WELCOME PANEL - Slides from LEFT to RIGHT
     welcomePanel: {
       position: "absolute",
       width: "50%",
@@ -216,7 +281,6 @@ const Register = () => {
       top: 0,
       boxSizing: "border-box",
     },
-
     logo: {
       position: "absolute",
       top: "30px",
@@ -227,7 +291,6 @@ const Register = () => {
       fontSize: "18px",
       fontWeight: "600",
     },
-
     logoIcon: {
       width: "32px",
       height: "32px",
@@ -238,7 +301,6 @@ const Register = () => {
       justifyContent: "center",
       fontSize: "16px",
     },
-
     decorativeShape: {
       position: "absolute",
       width: "120px",
@@ -249,7 +311,6 @@ const Register = () => {
       bottom: "60px",
       left: "40px",
     },
-
     decorativeShape2: {
       position: "absolute",
       width: "80px",
@@ -260,7 +321,6 @@ const Register = () => {
       top: "80px",
       right: "30px",
     },
-    
     welcomeTitle: {
       fontSize: "2.2rem",
       fontWeight: "700",
@@ -269,7 +329,6 @@ const Register = () => {
       position: "relative",
       zIndex: 2,
     },
-    
     welcomeText: {
       fontSize: "0.95rem",
       opacity: "0.95",
@@ -280,7 +339,6 @@ const Register = () => {
       position: "relative",
       zIndex: 2,
     },
-    
     signInBtn: {
       padding: "14px 50px",
       backgroundColor: "transparent",
@@ -295,16 +353,12 @@ const Register = () => {
       position: "relative",
       zIndex: 2,
     },
-    
-    // FORM CONTAINER
     formContainer: {
       position: "relative",
       width: "100%",
       height: "100%",
       display: "flex",
     },
-    
-    // LEFT SIDE - Register Form
     leftSide: {
       width: "50%",
       height: "100%",
@@ -315,8 +369,6 @@ const Register = () => {
       backgroundColor: "#fff",
       boxSizing: "border-box",
     },
-    
-    // RIGHT SIDE - Login Form
     rightSide: {
       width: "50%",
       height: "100%",
@@ -327,8 +379,6 @@ const Register = () => {
       backgroundColor: "#fff",
       boxSizing: "border-box",
     },
-    
-    // REGISTER FORM
     registerForm: {
       opacity: showRegister ? 1 : 0,
       transform: showRegister ? "translateX(0)" : "translateX(-30px)",
@@ -340,8 +390,6 @@ const Register = () => {
       flexDirection: "column",
       gap: "16px",
     },
-    
-    // LOGIN FORM
     loginForm: {
       opacity: showRegister ? 0 : 1,
       transform: showRegister ? "translateX(30px)" : "translateX(0)",
@@ -353,7 +401,6 @@ const Register = () => {
       flexDirection: "column",
       gap: "16px",
     },
-    
     formTitle: {
       fontSize: "2rem",
       fontWeight: "700",
@@ -361,7 +408,6 @@ const Register = () => {
       color: "#4db8a5",
       textAlign: "center",
     },
-
     dividerText: {
       textAlign: "center",
       fontSize: "0.9rem",
@@ -369,16 +415,13 @@ const Register = () => {
       fontWeight: "400",
       margin: "5px 0 15px 0",
     },
-    
     formGroup: {
       marginBottom: "0",
     },
-    
     inputWrapper: {
       position: "relative",
       width: "100%",
     },
-    
     input: {
       width: "100%",
       padding: "14px 50px 14px 45px",
@@ -391,7 +434,6 @@ const Register = () => {
       boxSizing: "border-box",
       color: "#555",
     },
-    
     inputIcon: {
       position: "absolute",
       left: "16px",
@@ -401,7 +443,6 @@ const Register = () => {
       transition: "color 0.3s ease",
       zIndex: 2,
     },
-
     passwordToggle: {
       position: "absolute",
       right: "16px",
@@ -417,7 +458,6 @@ const Register = () => {
       alignItems: "center",
       justifyContent: "center",
     },
-    
     submitBtn: {
       width: "100%",
       maxWidth: "200px",
@@ -433,23 +473,20 @@ const Register = () => {
       transition: "all 0.3s ease",
       letterSpacing: "1px",
       display: "block",
-      opacity: (firstNameError || lastNameError || emailError || passwordError) ? 0.6 : 1,
-      cursor: (firstNameError || lastNameError || emailError || passwordError) ? 'not-allowed' : 'pointer',
+      opacity: (firstNameError || lastNameError || emailError || passwordError || isLoading) ? 0.6 : 1,
+      cursor: (firstNameError || lastNameError || emailError || passwordError || isLoading) ? 'not-allowed' : 'pointer',
     },
-    
     toggleText: {
       textAlign: "center",
       color: "#666",
       fontSize: "0.88rem",
     },
-    
     toggleLink: {
       color: "#4db8a5",
       fontWeight: "600",
       cursor: "pointer",
       marginLeft: "4px",
     },
-
     forgotLink: {
       color: "#4db8a5",
       fontSize: "0.85rem",
@@ -458,7 +495,6 @@ const Register = () => {
       cursor: "pointer",
       display: "inline-block",
     },
-
     errorMessage: {
       fontSize: "0.8rem",
       color: "#f87171",
@@ -468,7 +504,16 @@ const Register = () => {
       gap: "6px",
       animation: "fadeIn 0.3s ease",
     },
-
+    apiError: {
+      backgroundColor: "#fee2e2",
+      color: "#dc2626",
+      padding: "12px",
+      borderRadius: "8px",
+      fontSize: "0.9rem",
+      textAlign: "center",
+      marginBottom: "10px",
+      border: "1px solid #fecaca",
+    },
     passwordRequirements: {
       fontSize: "0.8rem",
       color: "#666",
@@ -477,12 +522,10 @@ const Register = () => {
       alignItems: "center",
       gap: "6px",
     },
-
     validCheck: {
       color: "#4db8a5",
       fontSize: "14px",
     },
-
     nameRequirements: {
       fontSize: "0.8rem",
       color: "#666",
@@ -491,7 +534,6 @@ const Register = () => {
       alignItems: "center",
       gap: "6px",
     },
-
     '@keyframes fadeIn': {
       from: { opacity: 0, transform: 'translateY(-5px)' },
       to: { opacity: 1, transform: 'translateY(0)' },
@@ -499,7 +541,7 @@ const Register = () => {
   };
 
   const handleBtnHover = (e) => {
-    if (!firstNameError && !lastNameError && !emailError && !passwordError) {
+    if (!firstNameError && !lastNameError && !emailError && !passwordError && !isLoading) {
       e.target.style.backgroundColor = "#3ba795";
       e.target.style.transform = "translateY(-2px)";
       e.target.style.boxShadow = "0 8px 20px rgba(77, 184, 165, 0.3)";
@@ -584,6 +626,13 @@ const Register = () => {
               <h2 style={styles.formTitle}>Create Account</h2>
               
               <p style={styles.dividerText}>Enter your details to get started</p>
+              
+              {apiError && showRegister && (
+                <div style={styles.apiError}>
+                  <AlertCircle size={16} style={{ marginRight: '8px' }} />
+                  {apiError}
+                </div>
+              )}
               
               <form onSubmit={handleRegisterSubmit}>
                 <div style={styles.formGroup}>
@@ -721,9 +770,9 @@ const Register = () => {
                   style={styles.submitBtn}
                   onMouseEnter={handleBtnHover}
                   onMouseLeave={handleBtnLeave}
-                  disabled={firstNameError || lastNameError || emailError || passwordError}
+                  disabled={firstNameError || lastNameError || emailError || passwordError || isLoading}
                 >
-                  SIGN UP
+                  {isLoading ? 'REGISTERING...' : 'SIGN UP'}
                 </button>
               </form>
 
@@ -745,6 +794,13 @@ const Register = () => {
               <h2 style={styles.formTitle}>Sign In</h2>
               
               <p style={styles.dividerText}>Welcome back! Please login to continue</p>
+              
+              {apiError && !showRegister && (
+                <div style={styles.apiError}>
+                  <AlertCircle size={16} style={{ marginRight: '8px' }} />
+                  {apiError}
+                </div>
+              )}
               
               <form onSubmit={handleLoginSubmit}>
                 <div style={styles.formGroup}>
@@ -806,7 +862,7 @@ const Register = () => {
                     style={styles.forgotLink}
                     onClick={(e) => {
                       e.preventDefault();
-                      alert('Forgot password');
+                      alert('Please contact support to reset your password');
                     }}
                   >
                     Forgot your password?
@@ -818,9 +874,9 @@ const Register = () => {
                   style={styles.submitBtn}
                   onMouseEnter={handleBtnHover}
                   onMouseLeave={handleBtnLeave}
-                  disabled={emailError || passwordError}
+                  disabled={emailError || passwordError || isLoading}
                 >
-                  SIGN IN
+                  {isLoading ? 'LOGGING IN...' : 'SIGN IN'}
                 </button>
               </form>
 

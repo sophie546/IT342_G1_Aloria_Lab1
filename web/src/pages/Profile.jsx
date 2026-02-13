@@ -1,21 +1,108 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Mail, FileText, LogOut, Edit2, Save, X, Camera } from "lucide-react";
+import { User, Mail, LogOut, Edit2, Save, X, Camera } from "lucide-react";
+import api from '../services/api'; // Add this import
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
-  const [firstName, setFirstName] = useState('James');
-  const [lastName, setLastName] = useState('Carter');
-  const [email, setEmail] = useState('jamescarter1930@gmail.com');
-  const [description, setDescription] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
   const [profileImage, setProfileImage] = useState(null);
+  const [originalImage, setOriginalImage] = useState(null);
   const fileInputRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Validation states
+  const [validationErrors, setValidationErrors] = useState({
+    firstName: '',
+    lastName: ''
+  });
+
+  const [touchedFields, setTouchedFields] = useState({
+    firstName: false,
+    lastName: false
+  });
 
   const navigate = useNavigate();
+
+  // Fetch user data on component mount
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = () => {
+    try {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+        setFirstName(userData.firstname || '');
+        
+        // If lastname is "User" (default from registration), set it to empty string
+        const lastname = userData.lastname === 'User' ? '' : userData.lastname;
+        setLastName(lastname || '');
+        
+        setEmail(userData.email || '');
+        
+        // Load profile image if exists
+        const savedImage = localStorage.getItem(`profileImage_${userData.userId}`);
+        if (savedImage) {
+          setProfileImage(savedImage);
+          setOriginalImage(savedImage);
+        }
+      } else {
+        // If no user data, redirect to login
+        navigate('/');
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Validation functions
+  const validateFirstName = (value) => {
+    if (!value.trim()) return 'First name is required';
+    if (value.trim().length < 2) return 'First name must be at least 2 characters';
+    if (value.trim().length > 30) return 'First name cannot exceed 30 characters';
+    if (!/^[A-Za-z\s\-']+$/.test(value.trim())) return 'First name can only contain letters, spaces, hyphens and apostrophes';
+    return '';
+  };
+
+  const validateLastName = (value) => {
+    // Last name is optional, so only validate if something is entered
+    if (value.trim()) {
+      if (value.trim().length < 2) return 'Last name must be at least 2 characters';
+      if (value.trim().length > 30) return 'Last name cannot exceed 30 characters';
+      if (!/^[A-Za-z\s\-']+$/.test(value.trim())) return 'Last name can only contain letters, spaces, hyphens and apostrophes';
+    }
+    return '';
+  };
+
+  const validateImage = (file) => {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+
+    if (!allowedTypes.includes(file.type)) {
+      return 'Only JPG, PNG, GIF, and WEBP images are allowed';
+    }
+    if (file.size > maxSize) {
+      return 'Image size must be less than 5MB';
+    }
+    return '';
+  };
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      const error = validateImage(file);
+      if (error) {
+        alert(error);
+        e.target.value = ''; // Clear the input
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfileImage(reader.result);
@@ -30,24 +117,181 @@ const Profile = () => {
     }
   };
 
-  const handleSave = (e) => {
+  const handleFieldBlur = (fieldName) => {
+    setTouchedFields(prev => ({ ...prev, [fieldName]: true }));
+  };
+
+  const handleInputChange = (field, value) => {
+    // Update field value
+    switch(field) {
+      case 'firstName':
+        setFirstName(value);
+        break;
+      case 'lastName':
+        setLastName(value);
+        break;
+      default:
+        break;
+    }
+
+    // Validate field
+    let error = '';
+    switch(field) {
+      case 'firstName':
+        error = validateFirstName(value);
+        break;
+      case 'lastName':
+        error = validateLastName(value);
+        break;
+      default:
+        break;
+    }
+
+    setValidationErrors(prev => ({ ...prev, [field]: error }));
+  };
+
+  const isFormValid = () => {
+    const firstNameError = validateFirstName(firstName);
+    const lastNameError = validateLastName(lastName);
+
+    return !firstNameError && !lastNameError;
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    setIsEditing(false);
-    // Here you would typically save to backend
-    alert("Profile updated successfully!");
+    
+    // Mark all fields as touched
+    setTouchedFields({
+      firstName: true,
+      lastName: true
+    });
+
+    // Validate all fields
+    const firstNameError = validateFirstName(firstName);
+    const lastNameError = validateLastName(lastName);
+
+    setValidationErrors({
+      firstName: firstNameError,
+      lastName: lastNameError
+    });
+
+    if (firstNameError || lastNameError) {
+      alert("Please fix the validation errors before saving.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // Get user data from localStorage
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+        
+        // Prepare updated user data
+        const updatedUserData = {
+          userId: userData.userId,
+          firstname: firstName,
+          lastname: lastName || '', // Allow empty last name
+          email: email // Keep existing email
+        };
+
+        // Make API call to update user in database
+        // You'll need to create this endpoint in your backend
+        // Make API call to update user in database
+          const response = await api.put('/auth/profile', updatedUserData, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+        
+        if (response.status === 200) {
+          // Update localStorage with new data
+          localStorage.setItem('user', JSON.stringify({
+            ...userData,
+            firstname: firstName,
+            lastname: lastName || ''
+          }));
+          
+          // Save profile image if changed
+          if (profileImage && profileImage !== originalImage) {
+            localStorage.setItem(`profileImage_${userData.userId}`, profileImage);
+            setOriginalImage(profileImage);
+            
+            // Optional: Upload image to backend
+            // await api.post('/user/profile/image', { 
+            //   userId: userData.userId, 
+            //   image: profileImage 
+            // });
+          }
+
+          alert("Profile updated successfully!");
+          setIsEditing(false);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      
+      // Handle different error scenarios
+      if (error.response) {
+        if (error.response.status === 401) {
+          alert("Session expired. Please login again.");
+          navigate('/');
+        } else if (error.response.status === 400) {
+          alert(error.response.data?.message || "Invalid data. Please check your input.");
+        } else {
+          alert("Failed to update profile. Please try again.");
+        }
+      } else if (error.request) {
+        alert("Network error. Please check your connection.");
+      } else {
+        alert("An error occurred. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    // Reset to original values if needed
+    // Reset validation states
+    setValidationErrors({
+      firstName: '',
+      lastName: ''
+    });
+    setTouchedFields({
+      firstName: false,
+      lastName: false
+    });
+    // Reset to original values
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      const userData = JSON.parse(userStr);
+      setFirstName(userData.firstname || '');
+      
+      // If lastname is "User" (default from registration), set it to empty string
+      const lastname = userData.lastname === 'User' ? '' : userData.lastname;
+      setLastName(lastname || '');
+    }
+    // Reset image to original
+    setProfileImage(originalImage);
   };
 
   const handleLogout = () => {
-    // Handle logout logic here
     const confirmLogout = window.confirm("Are you sure you want to logout?");
     if (confirmLogout) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      // Note: We keep profile images in localStorage so they persist across sessions
       navigate("/");
     }
+  };
+
+  // Get initials for avatar (handle empty last name)
+  const getInitials = () => {
+    const first = firstName?.charAt(0) || '';
+    const last = lastName?.charAt(0) || '';
+    return first + last || '?';
   };
 
   const styles = {
@@ -91,14 +335,13 @@ const Profile = () => {
 
     card: {
       width: "100%",
-      maxWidth: "500px",
+      maxWidth: "450px",
       backgroundColor: "#fff",
       borderRadius: "24px",
       overflow: "hidden",
       boxShadow: "0 30px 80px rgba(0, 0, 0, 0.15)",
       position: "relative",
       zIndex: 1,
-      minHeight: "auto",
     },
 
     header: {
@@ -106,26 +349,6 @@ const Profile = () => {
       padding: "30px 40px 70px",
       position: "relative",
       color: "white",
-    },
-
-    logo: {
-      display: "flex",
-      alignItems: "center",
-      gap: "8px",
-      fontSize: "18px",
-      fontWeight: "600",
-      marginBottom: "30px",
-    },
-
-    logoIcon: {
-      width: "32px",
-      height: "32px",
-      backgroundColor: "rgba(255, 255, 255, 0.2)",
-      borderRadius: "6px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontSize: "16px",
     },
 
     headerTitle: {
@@ -199,6 +422,7 @@ const Profile = () => {
       justifyContent: "center",
       opacity: 0,
       transition: "opacity 0.3s ease",
+      color: "white",
     },
 
     hiddenInput: {
@@ -206,7 +430,7 @@ const Profile = () => {
     },
 
     content: {
-      padding: "15px 40px 30px",
+      padding: "15px 30px 30px",
     },
 
     nameSection: {
@@ -221,14 +445,14 @@ const Profile = () => {
       margin: "0 0 5px 0",
     },
 
-    role: {
+    email: {
       fontSize: "0.95rem",
       color: "#666",
       margin: "0",
     },
 
     formGroup: {
-      marginBottom: "16px",
+      marginBottom: "20px",
     },
 
     label: {
@@ -240,6 +464,13 @@ const Profile = () => {
       marginLeft: "4px",
     },
 
+    optionalLabel: {
+      fontSize: "0.75rem",
+      color: "#999",
+      fontWeight: "400",
+      marginLeft: "8px",
+    },
+
     inputWrapper: {
       position: "relative",
       width: "100%",
@@ -248,8 +479,8 @@ const Profile = () => {
     input: {
       width: "100%",
       padding: "14px 14px 14px 45px",
-      border: "none",
-      backgroundColor: "#f5f5f5",
+      border: validationErrors.firstName && touchedFields.firstName ? "2px solid #f87171" : "none",
+      backgroundColor: validationErrors.firstName && touchedFields.firstName ? "#fff1f0" : "#f5f5f5",
       borderRadius: "8px",
       fontSize: "14px",
       transition: "all 0.3s ease",
@@ -264,28 +495,22 @@ const Profile = () => {
       cursor: "not-allowed",
     },
 
-    textarea: {
-      width: "100%",
-      padding: "14px 14px 14px 45px",
-      border: "none",
-      backgroundColor: "#f5f5f5",
-      borderRadius: "8px",
-      fontSize: "14px",
-      transition: "all 0.3s ease",
-      outline: "none",
-      boxSizing: "border-box",
-      color: "#555",
-      minHeight: "80px",
-      resize: "vertical",
-      fontFamily: "'Poppins', 'Inter', 'Segoe UI', sans-serif",
-    },
-
     inputIcon: {
       position: "absolute",
       left: "16px",
-      top: "16px",
+      top: "14px",
       color: "#999",
       transition: "color 0.3s ease",
+    },
+
+    errorMessage: {
+      color: "#f87171",
+      fontSize: "0.75rem",
+      marginTop: "5px",
+      marginLeft: "4px",
+      display: "flex",
+      alignItems: "center",
+      gap: "4px",
     },
 
     buttonGroup: {
@@ -321,13 +546,14 @@ const Profile = () => {
       borderRadius: "25px",
       fontSize: "15px",
       fontWeight: "600",
-      cursor: "pointer",
+      cursor: isFormValid() && !isLoading ? "pointer" : "not-allowed",
       transition: "all 0.3s ease",
       letterSpacing: "1px",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
       gap: "8px",
+      opacity: isFormValid() && !isLoading ? 1 : 0.6,
     },
 
     cancelBtn: {
@@ -367,10 +593,20 @@ const Profile = () => {
       marginTop: "20px",
     },
 
-    divider: {
-      height: "1px",
-      backgroundColor: "#e5e5e5",
-      margin: "30px 0",
+    loadingContainer: {
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      height: "300px",
+    },
+
+    loadingSpinner: {
+      width: "40px",
+      height: "40px",
+      border: "3px solid #f3f3f3",
+      borderTop: "3px solid #4db8a5",
+      borderRadius: "50%",
+      animation: "spin 1s linear infinite",
     },
   };
 
@@ -380,14 +616,19 @@ const Profile = () => {
   };
 
   const handleInputBlur = (e) => {
-    e.target.style.backgroundColor = "#f5f5f5";
-    e.target.style.boxShadow = "none";
+    const fieldName = e.target.name;
+    if (!validationErrors[fieldName]) {
+      e.target.style.backgroundColor = "#f5f5f5";
+      e.target.style.boxShadow = "none";
+    }
   };
 
   const handleBtnHover = (e) => {
-    e.target.style.backgroundColor = "#3ba795";
-    e.target.style.transform = "translateY(-2px)";
-    e.target.style.boxShadow = "0 8px 20px rgba(77, 184, 165, 0.3)";
+    if (isFormValid() || e.target.style.cursor !== "not-allowed") {
+      e.target.style.backgroundColor = "#3ba795";
+      e.target.style.transform = "translateY(-2px)";
+      e.target.style.boxShadow = "0 8px 20px rgba(77, 184, 165, 0.3)";
+    }
   };
 
   const handleBtnLeave = (e) => {
@@ -418,6 +659,18 @@ const Profile = () => {
     e.target.style.transform = "translateY(0)";
   };
 
+  if (isLoading) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <div style={styles.loadingContainer}>
+            <div style={styles.loadingSpinner}></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.container}>
       <div style={styles.decorativeCircle1}></div>
@@ -426,10 +679,8 @@ const Profile = () => {
       <div style={styles.card}>
         {/* Header */}
         <div style={styles.header}>
-
           <div style={styles.decorativeShape}></div>
           <div style={styles.decorativeShape2}></div>
-
           <h1 style={styles.headerTitle}>My Profile</h1>
         </div>
 
@@ -452,11 +703,11 @@ const Profile = () => {
             }}
           >
             {!profileImage && (
-              <span>{firstName.charAt(0)}{lastName.charAt(0)}</span>
+              <span>{getInitials()}</span>
             )}
             {isEditing && (
               <div className="avatar-overlay" style={styles.avatarOverlay}>
-                <Camera size={32} color="white" />
+                <Camera size={32} />
               </div>
             )}
           </div>
@@ -474,29 +725,11 @@ const Profile = () => {
           {!isEditing ? (
             <>
               <div style={styles.nameSection}>
-                <h2 style={styles.fullName}>{firstName} {lastName}</h2>
-                <p style={styles.role}>{email}</p>
+                <h2 style={styles.fullName}>
+                  {firstName} {lastName}
+                </h2>
+                <p style={styles.email}>{email}</p>
               </div>
-
-              {description && (
-                <>
-                  <div style={styles.divider}></div>
-                  <div style={styles.formGroup}>
-                    <label style={styles.label}>About Me</label>
-                    <p style={{
-                      padding: "14px",
-                      backgroundColor: "#fafafa",
-                      borderRadius: "8px",
-                      fontSize: "14px",
-                      color: "#555",
-                      lineHeight: "1.6",
-                      margin: "0",
-                    }}>
-                      {description}
-                    </p>
-                  </div>
-                </>
-              )}
 
               <div style={styles.buttonGroup}>
                 <button
@@ -528,32 +761,46 @@ const Profile = () => {
                   <User size={18} style={styles.inputIcon} />
                   <input
                     type="text"
+                    name="firstName"
                     value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                    onBlur={() => handleFieldBlur('firstName')}
+                    onFocus={handleInputFocus}
                     required
                     style={styles.input}
                     placeholder="First Name"
-                    onFocus={handleInputFocus}
-                    onBlur={handleInputBlur}
                   />
                 </div>
+                {validationErrors.firstName && touchedFields.firstName && (
+                  <div style={styles.errorMessage}>
+                    <span>⚠</span> {validationErrors.firstName}
+                  </div>
+                )}
               </div>
 
               <div style={styles.formGroup}>
-                <label style={styles.label}>Last Name</label>
+                <label style={styles.label}>
+                  Last Name
+                  <span style={styles.optionalLabel}>(optional)</span>
+                </label>
                 <div style={styles.inputWrapper}>
                   <User size={18} style={styles.inputIcon} />
                   <input
                     type="text"
+                    name="lastName"
                     value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    required
-                    style={styles.input}
-                    placeholder="Last Name"
+                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                    onBlur={() => handleFieldBlur('lastName')}
                     onFocus={handleInputFocus}
-                    onBlur={handleInputBlur}
+                    style={styles.input}
+                    placeholder="Last Name (optional)"
                   />
                 </div>
+                {validationErrors.lastName && touchedFields.lastName && (
+                  <div style={styles.errorMessage}>
+                    <span>⚠</span> {validationErrors.lastName}
+                  </div>
+                )}
               </div>
 
               <div style={styles.formGroup}>
@@ -563,26 +810,9 @@ const Profile = () => {
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
                     style={{...styles.input, ...styles.inputDisabled}}
                     placeholder="Email"
                     disabled
-                  />
-                </div>
-              </div>
-
-              <div style={styles.formGroup}>
-                <label style={styles.label}>About Me</label>
-                <div style={styles.inputWrapper}>
-                  <FileText size={18} style={styles.inputIcon} />
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    style={styles.textarea}
-                    placeholder="Tell us about yourself..."
-                    onFocus={handleInputFocus}
-                    onBlur={handleInputBlur}
                   />
                 </div>
               </div>
@@ -593,9 +823,10 @@ const Profile = () => {
                   style={styles.saveBtn}
                   onMouseEnter={handleBtnHover}
                   onMouseLeave={handleBtnLeave}
+                  disabled={!isFormValid() || isLoading}
                 >
                   <Save size={18} />
-                  SAVE
+                  {isLoading ? 'SAVING...' : 'SAVE'}
                 </button>
                 <button
                   type="button"
@@ -612,6 +843,14 @@ const Profile = () => {
           )}
         </div>
       </div>
+
+      {/* Add keyframe animation */}
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };
