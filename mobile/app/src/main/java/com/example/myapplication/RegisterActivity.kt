@@ -14,13 +14,13 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
-class MainActivity : AppCompatActivity() {
+class RegisterActivity : AppCompatActivity() {
     private lateinit var tokenManager: TokenManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_register)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -29,48 +29,52 @@ class MainActivity : AppCompatActivity() {
 
         tokenManager = TokenManager(this)
 
-        // If already logged in, go straight to Profile
-        if (tokenManager.getToken() != null) {
-            startActivity(Intent(this, ProfileActivity::class.java))
-            finish()
-            return
-        }
-
+        val etFullName = findViewById<TextInputEditText>(R.id.etFullName)
         val etEmail = findViewById<TextInputEditText>(R.id.etEmail)
         val etPassword = findViewById<TextInputEditText>(R.id.etPassword)
 
-
-
-        findViewById<TextView>(R.id.tvRegister).setOnClickListener {
-            startActivity(Intent(this, RegisterActivity::class.java))
+        findViewById<TextView>(R.id.btnGoToLogin).setOnClickListener {
+            startActivity(Intent(this, MainActivity::class.java))
         }
 
-        findViewById<Button>(R.id.btnLogin).setOnClickListener {
+        findViewById<Button>(R.id.btnRegister).setOnClickListener {
+            val fullName = etFullName.text.toString().trim()
             val email = etEmail.text.toString().trim()
             val password = etPassword.text.toString().trim()
 
-            if (email.isEmpty() || password.isEmpty()) {
+            if (fullName.isEmpty() || email.isEmpty() || password.isEmpty()) {
                 Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            val request = LoginRequest(identifier = email, password = password)
+            // Split full name into first and last
+            val parts = fullName.split(" ", limit = 2)
+            val firstname = parts[0]
+            val lastname = if (parts.size > 1) parts[1] else ""
 
-            RetrofitClient.instance.login(request).enqueue(object : Callback<AuthResponse> {
+            val request = RegisterRequest(
+                firstname = firstname,
+                lastname = lastname,
+                email = email,
+                password = password
+            )
+
+            RetrofitClient.instance.register(request).enqueue(object : Callback<AuthResponse> {
                 override fun onResponse(call: Call<AuthResponse>, response: Response<AuthResponse>) {
                     if (response.isSuccessful) {
                         val body = response.body()!!
                         tokenManager.saveToken(body.token)
                         tokenManager.saveUser(body.userId, body.firstname, body.lastname, body.email)
-                        startActivity(Intent(this@MainActivity, ProfileActivity::class.java))
+                        Toast.makeText(this@RegisterActivity, "Registered successfully!", Toast.LENGTH_SHORT).show()
+                        startActivity(Intent(this@RegisterActivity, ProfileActivity::class.java))
                         finish()
                     } else {
-                        Toast.makeText(this@MainActivity, "Invalid credentials", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@RegisterActivity, "Registration failed: ${response.errorBody()?.string()}", Toast.LENGTH_LONG).show()
                     }
                 }
 
                 override fun onFailure(call: Call<AuthResponse>, t: Throwable) {
-                    Toast.makeText(this@MainActivity, "Connection error: ${t.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@RegisterActivity, "Connection error: ${t.message}", Toast.LENGTH_SHORT).show()
                 }
             })
         }
